@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bismay.drowse"
+      "package": "com.bismay.drowse",
+      "permissions": ["android.permission.WRITE_SETTINGS"]
     },
     "web": {
       "bundler": "metro",
@@ -33,6 +34,12 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your camera"
         }
       ]
     ],

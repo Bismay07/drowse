@@ -18,8 +18,8 @@ export default function App() {
 		const res = authService.getCurrentUser()
 		console.log("user", res);
 		console.log("stored user : ", AsyncStorage.getItem('user'));
-		
-		
+
+
 	}, [])
 
 	const handleSignUp = async () => {
