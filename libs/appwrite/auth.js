@@ -383,60 +383,295 @@ class Authentication {
     }
   };
 
+  //   googleOauth2 = async () => {
+  //     try {
+  //       const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
+
+  //       if (!deepLink.hostname) {
+  //         deepLink.hostname = "localhost";
+  //       }
+
+  //       const scheme = `${deepLink.protocol}//`;
+
+  //       const loginUrl = await this.account.createOAuth2Token(
+  //         "google",
+  //         `${deepLink}`,
+  //         `${deepLink}`
+  //       );
+
+  //       let result;
+  //       try {
+  //         result = await WebBrowser.openAuthSessionAsync(`${loginUrl}`, scheme, {
+  //           showInRecents: true,
+  //           preferEphemeralSession: true,
+  //         });
+  //       } catch (browserError) {
+  //         console.error("Browser session error:", browserError);
+  //         throw new Error("Failed to open authentication window");
+  //       } finally {
+  //         await WebBrowser.coolDownAsync();
+  //       }
+
+  //       if (result.type === "success") {
+  //         const url = new URL(result.url);
+  //         const secret = url.searchParams.get("secret");
+  //         const userId = url.searchParams.get("userId");
+
+  //         if (!secret || !userId) {
+  //           throw new Error("Failed to get authentication credentials");
+  //         }
+
+  //         await this.account.createSession(userId, secret);
+  //         const userData = await this.getCurrentUser();
+
+  //         // Store session data
+  //         const session = await this.account.getSession(userId);
+  //         await AsyncStorage.setItem("session", JSON.stringify(session));
+  //         await AsyncStorage.setItem("user", JSON.stringify(userData));
+
+  //         return userData;
+  //       } else if (result.type === "cancel") {
+  //         throw new Error("Authentication was cancelled by the user");
+  //       } else {
+  //         throw new Error("Authentication failed");
+  //       }
+  //     } catch (error) {
+  //       console.error("Google OAuth Error:", error);
+  //       Alert.alert(
+  //         "Authentication Error",
+  //         error.message || "Failed to authenticate with Google"
+  //       );
+  //       throw error;
+  //     }
+  //   };
+
+  //   appleOauth2 = async () => {
+  //     try {
+  //       const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
+
+  //       if (!deepLink.hostname) {
+  //         deepLink.hostname = "localhost";
+  //       }
+
+  //       const scheme = `${deepLink.protocol}//`;
+
+  //       const loginUrl = await this.account.createOAuth2Token(
+  //         "apple",
+  //         `${deepLink}`,
+  //         `${deepLink}`
+  //       );
+
+  //       const result = await WebBrowser.openAuthSessionAsync(
+  //         `${loginUrl}`,
+  //         scheme
+  //       );
+
+  //       if (result.type === "success") {
+  //         const url = new URL(result.url);
+  //         const secret = url.searchParams.get("secret");
+  //         const userId = url.searchParams.get("userId");
+
+  //         if (!secret || !userId) {
+  //           throw new Error("Failed to get authentication credentials");
+  //         }
+
+  //         await this.account.createSession(userId, secret);
+  //         const userData = await this.getCurrentUser();
+
+  //         // Store session data
+  //         const session = await this.account.getSession(userId);
+  //         await AsyncStorage.setItem("session", JSON.stringify(session));
+  //         await AsyncStorage.setItem("user", JSON.stringify(userData));
+
+  //         return userData;
+  //       } else {
+  //         throw new Error("Authentication was cancelled or failed");
+  //       }
+  //     } catch (error) {
+  //       console.error("Apple OAuth Error:", error);
+  //       Alert.alert(
+  //         "Authentication Error",
+  //         error.message || "Failed to authenticate with Apple"
+  //       );
+  //       throw error;
+  //     }
+  //   };
   googleOauth2 = async () => {
     try {
-      const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
-
-      if (!deepLink.hostname) {
-        deepLink.hostname = "localhost";
+      // Clear any existing session
+      try {
+        await this.account.deleteSession("current");
+      } catch (e) {
+        console.log("No existing session to delete:", JSON.stringify(e, null, 2));
       }
 
+      // Reinitialize client to ensure clean state
+      this.client = new Client()
+        .setEndpoint(conf.endpoint)
+        .setProject(conf.projectId)
+        .setPlatform(conf.platform);
+      this.account = new Account(this.client);
+      this.avatar = new Avatars(this.client);
+
+      // Generate redirect URI
+      let deepLink;
+      try {
+        deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
+        if (!deepLink.hostname) {
+          deepLink.hostname = "localhost";
+        }
+      } catch (e) {
+        console.log("Failed to generate deepLink:", JSON.stringify(e, null, 2));
+        throw new Error("Invalid redirect URI configuration");
+      }
       const scheme = `${deepLink.protocol}//`;
+      console.log("OAuth DeepLink:", deepLink.toString());
 
-      const loginUrl = await this.account.createOAuth2Token(
-        "google",
-        `${deepLink}`,
-        `${deepLink}`
-      );
+      // Create OAuth token
+      let loginUrl;
+      try {
+        loginUrl = await this.account.createOAuth2Token(
+          "google",
+          `${deepLink}`,
+          `${deepLink}`
+        );
+        console.log("OAuth Login URL:", loginUrl);
+      } catch (e) {
+        console.log("Failed to create OAuth token:", JSON.stringify(e, null, 2));
+        throw new Error("Failed to initiate OAuth flow: Check Appwrite configuration");
+      }
 
+      // Open browser for authentication
       let result;
       try {
         result = await WebBrowser.openAuthSessionAsync(`${loginUrl}`, scheme, {
           showInRecents: true,
           preferEphemeralSession: true,
         });
+        console.log("OAuth WebBrowser Result:", JSON.stringify(result, null, 2));
       } catch (browserError) {
-        console.error("Browser session error:", browserError);
+        console.error("Browser session error:", JSON.stringify(browserError, null, 2));
         throw new Error("Failed to open authentication window");
       } finally {
-        await WebBrowser.coolDownAsync();
+        try {
+          await WebBrowser.coolDownAsync();
+        } catch (e) {
+          console.log("WebBrowser cooldown failed:", JSON.stringify(e, null, 2));
+        }
       }
 
+      // Process OAuth callback
       if (result.type === "success") {
-        const url = new URL(result.url);
-        const secret = url.searchParams.get("secret");
-        const userId = url.searchParams.get("userId");
-
-        if (!secret || !userId) {
-          throw new Error("Failed to get authentication credentials");
+		console.log(result);
+		
+        let userId, secret, queryParams;
+        try {
+          const url = new URL(result.url);
+          queryParams = Object.fromEntries(url.searchParams);
+          userId = url.searchParams.get("userId");
+          secret = url.searchParams.get("secret");
+          console.log("OAuth Callback URL:", result.url);
+          console.log("OAuth Callback Query Params:", JSON.stringify(queryParams, null, 2));
+          console.log("OAuth Callback - User ID:", userId, "Secret:", secret);
+        } catch (e) {
+          console.log("Failed to parse callback URL:", JSON.stringify(e, null, 2));
+          throw new Error("Invalid OAuth callback URL");
         }
 
-        await this.account.createSession(userId, secret);
-        const userData = await this.getCurrentUser();
+        if (!userId || !secret) {
+          console.log("Missing OAuth parameters:", { userId, secret, queryParams });
+          throw new Error("OAuth callback missing userId or secret: Check redirect URI and OAuth configuration");
+        }
 
-        // Store session data
-        const session = await this.account.getSession(userId);
-        await AsyncStorage.setItem("session", JSON.stringify(session));
-        await AsyncStorage.setItem("user", JSON.stringify(userData));
+        // Create session with retry logic
+        let sessionCreated = false;
+        const maxRetries = 3;
+        let retryCount = 0;
 
-        return userData;
+        // Reinitialize client before session creation
+        this.client = new Client()
+          .setEndpoint(conf.endpoint)
+          .setProject(conf.projectId)
+          .setPlatform(conf.platform);
+        this.account = new Account(this.client);
+
+        while (!sessionCreated && retryCount < maxRetries) {
+          try {
+            await this.account.createSession(userId, secret);
+            sessionCreated = true;
+            console.log("OAuth session created for user:", userId);
+          } catch (e) {
+            retryCount++;
+            console.log(`Session creation attempt ${retryCount} failed:`, JSON.stringify(e, null, 2));
+            if (e.code === 401) {
+              throw new Error("Unauthorized: Invalid OAuth credentials or configuration");
+            }
+            if (retryCount < maxRetries) {
+              // Wait 1 second before retrying
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            } else {
+              throw new Error(e.message || "Failed to create OAuth session after retries");
+            }
+          }
+        }
+
+        // Verify session
+        let currentUser = null;
+        try {
+          currentUser = await this.account.get();
+          console.log("OAuth session verified, current user:", JSON.stringify(currentUser, null, 2));
+        } catch (e) {
+          console.log("Session verification failed:", JSON.stringify(e, null, 2));
+          throw new Error(e.message || "Failed to verify OAuth session");
+        }
+
+        // Generate avatar URL
+        let avatarUrl;
+        try {
+          avatarUrl = this.avatar.getInitials(currentUser.name || "User");
+        } catch (e) {
+          console.log("Failed to generate avatar:", JSON.stringify(e, null, 2));
+          avatarUrl = "";
+        }
+
+        // Create user object
+        const user = {
+          id: currentUser.$id,
+          username: currentUser.name || "User",
+          email: currentUser.email || "",
+          avatar: avatarUrl,
+        };
+
+        // Store session and user data
+        try {
+          await AsyncStorage.setItem("user", JSON.stringify(user));
+          await AsyncStorage.setItem("session", JSON.stringify({ userId, secret }));
+          console.log("Stored user:", JSON.stringify(user, null, 2));
+        } catch (e) {
+          console.log("Failed to store data in AsyncStorage:", JSON.stringify(e, null, 2));
+          throw new Error("Failed to store user data");
+        }
+
+        return user;
       } else if (result.type === "cancel") {
         throw new Error("Authentication was cancelled by the user");
       } else {
-        throw new Error("Authentication failed");
+        throw new Error(`Authentication failed: ${JSON.stringify(result, null, 2)}`);
       }
     } catch (error) {
-      console.error("Google OAuth Error:", error);
+      console.error("Google OAuth Error:", JSON.stringify(error, null, 2));
+      // Clean up AsyncStorage on error
+      try {
+        await AsyncStorage.removeItem("session");
+        await AsyncStorage.removeItem("user");
+      } catch (e) {
+        console.log("Failed to clear AsyncStorage:", JSON.stringify(e, null, 2));
+      }
+      if (error.code === 401 || error.message.includes("missing scope (account)")) {
+        throw new Error("Unauthorized: Check OAuth redirect URI, Client ID, or Secret in Appwrite and Google Cloud Console");
+      } else if (error.code === 429) {
+        throw new Error("Too many requests. Please try again later.");
+      }
       Alert.alert(
         "Authentication Error",
         error.message || "Failed to authenticate with Google"
@@ -447,48 +682,175 @@ class Authentication {
 
   appleOauth2 = async () => {
     try {
-      const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
-
-      if (!deepLink.hostname) {
-        deepLink.hostname = "localhost";
+      // Clear any existing session
+      try {
+        await this.account.deleteSession("current");
+      } catch (e) {
+        console.log("No existing session to delete:", JSON.stringify(e, null, 2));
       }
 
+      // Reinitialize client to ensure clean state
+      this.client = new Client()
+        .setEndpoint(conf.endpoint)
+        .setProject(conf.projectId)
+        .setPlatform(conf.platform);
+      this.account = new Account(this.client);
+      this.avatar = new Avatars(this.client);
+
+      // Generate redirect URI
+      let deepLink;
+      try {
+        deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
+        if (!deepLink.hostname) {
+          deepLink.hostname = "localhost";
+        }
+      } catch (e) {
+        console.log("Failed to generate deepLink:", JSON.stringify(e, null, 2));
+        throw new Error("Invalid redirect URI configuration");
+      }
       const scheme = `${deepLink.protocol}//`;
+      console.log("OAuth DeepLink:", deepLink.toString());
 
-      const loginUrl = await this.account.createOAuth2Token(
-        "apple",
-        `${deepLink}`,
-        `${deepLink}`
-      );
+      // Create OAuth token
+      let loginUrl;
+      try {
+        loginUrl = await this.account.createOAuth2Token(
+          "apple",
+          `${deepLink}`,
+          `${deepLink}`
+        );
+        console.log("OAuth Login URL:", loginUrl);
+      } catch (e) {
+        console.log("Failed to create OAuth token:", JSON.stringify(e, null, 2));
+        throw new Error("Failed to initiate OAuth flow: Check Appwrite configuration");
+      }
 
-      const result = await WebBrowser.openAuthSessionAsync(
-        `${loginUrl}`,
-        scheme
-      );
+      // Open browser for authentication
+      let result;
+      try {
+        result = await WebBrowser.openAuthSessionAsync(`${loginUrl}`, scheme);
+        console.log("OAuth WebBrowser Result:", JSON.stringify(result, null, 2));
+      } catch (browserError) {
+        console.error("Browser session error:", JSON.stringify(browserError, null, 2));
+        throw new Error("Failed to open authentication window");
+      } finally {
+        try {
+          await WebBrowser.coolDownAsync();
+        } catch (e) {
+          console.log("WebBrowser cooldown failed:", JSON.stringify(e, null, 2));
+        }
+      }
 
+      // Process OAuth callback
       if (result.type === "success") {
-        const url = new URL(result.url);
-        const secret = url.searchParams.get("secret");
-        const userId = url.searchParams.get("userId");
-
-        if (!secret || !userId) {
-          throw new Error("Failed to get authentication credentials");
+        let userId, secret, queryParams;
+		console.log(result);
+		
+        try {
+          const url = new URL(result.url);
+          queryParams = Object.fromEntries(url.searchParams);
+          userId = url.searchParams.get("userId");
+          secret = url.searchParams.get("secret");
+          console.log("OAuth Callback URL:", result.url);
+          console.log("OAuth Callback Query Params:", JSON.stringify(queryParams, null, 2));
+          console.log("OAuth Callback - User ID:", userId, "Secret:", secret);
+        } catch (e) {
+          console.log("Failed to parse callback URL:", JSON.stringify(e, null, 2));
+          throw new Error("Invalid OAuth callback URL");
         }
 
-        await this.account.createSession(userId, secret);
-        const userData = await this.getCurrentUser();
+        if (!userId || !secret) {
+          console.log("Missing OAuth parameters:", { userId, secret, queryParams });
+          throw new Error("OAuth callback missing userId or secret: Check redirect URI and OAuth configuration");
+        }
 
-        // Store session data
-        const session = await this.account.getSession(userId);
-        await AsyncStorage.setItem("session", JSON.stringify(session));
-        await AsyncStorage.setItem("user", JSON.stringify(userData));
+        // Create session with retry logic
+        let sessionCreated = false;
+        const maxRetries = 3;
+        let retryCount = 0;
 
-        return userData;
+        // Reinitialize client before session creation
+        this.client = new Client()
+          .setEndpoint(conf.endpoint)
+          .setProject(conf.projectId)
+          .setPlatform(conf.platform);
+        this.account = new Account(this.client);
+
+        while (!sessionCreated && retryCount < maxRetries) {
+          try {
+            await this.account.createSession(userId, secret);
+            sessionCreated = true;
+            console.log("OAuth session created for user:", userId);
+          } catch (e) {
+            retryCount++;
+            console.log(`Session creation attempt ${retryCount} failed:`, JSON.stringify(e, null, 2));
+            if (e.code === 401) {
+              throw new Error("Unauthorized: Invalid OAuth credentials or configuration");
+            }
+            if (retryCount < maxRetries) {
+              // Wait 1 second before retrying
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            } else {
+              throw new Error(e.message || "Failed to create OAuth session after retries");
+            }
+          }
+        }
+
+        // Verify session
+        let currentUser = null;
+        try {
+          currentUser = await this.account.get();
+          console.log("OAuth session verified, current user:", JSON.stringify(currentUser, null, 2));
+        } catch (e) {
+          console.log("Session verification failed:", JSON.stringify(e, null, 2));
+          throw new Error(e.message || "Failed to verify OAuth session");
+        }
+
+        // Generate avatar URL
+        let avatarUrl;
+        try {
+          avatarUrl = this.avatar.getInitials(currentUser.name || "User");
+        } catch (e) {
+          console.log("Failed to generate avatar:", JSON.stringify(e, null, 2));
+          avatarUrl = "";
+        }
+
+        // Create user object
+        const user = {
+          id: currentUser.$id,
+          username: currentUser.name || "User",
+          email: currentUser.email || "",
+          avatar: avatarUrl,
+        };
+
+        // Store session and user data
+        try {
+          await AsyncStorage.setItem("user", JSON.stringify(user));
+          await AsyncStorage.setItem("session", JSON.stringify({ userId, secret }));
+          console.log("Stored user:", JSON.stringify(user, null, 2));
+        } catch (e) {
+          console.log("Failed to store data in AsyncStorage:", JSON.stringify(e, null, 2));
+          throw new Error("Failed to store user data");
+        }
+
+        return user;
       } else {
-        throw new Error("Authentication was cancelled or failed");
+        throw new Error(`Authentication failed: ${JSON.stringify(result, null, 2)}`);
       }
     } catch (error) {
-      console.error("Apple OAuth Error:", error);
+      console.error("Apple OAuth Error:", JSON.stringify(error, null, 2));
+      // Clean up AsyncStorage on error
+      try {
+        await AsyncStorage.removeItem("session");
+        await AsyncStorage.removeItem("user");
+      } catch (e) {
+        console.log("Failed to clear AsyncStorage:", JSON.stringify(e, null, 2));
+      }
+      if (error.code === 401 || error.message.includes("missing scope (account)")) {
+        throw new Error("Unauthorized: Check OAuth redirect URI, Client ID, or Secret in Appwrite and Apple Developer Console");
+      } else if (error.code === 429) {
+        throw new Error("Too many requests. Please try again later.");
+      }
       Alert.alert(
         "Authentication Error",
         error.message || "Failed to authenticate with Apple"
