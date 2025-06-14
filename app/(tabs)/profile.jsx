@@ -1,10 +1,11 @@
-import { View, Text, Button, TouchableOpacity, SafeAreaView } from 'react-native'
+import { View, Text, Button, TouchableOpacity } from 'react-native'
 import React, { useContext } from 'react'
 import authService from '../../libs/appwrite/auth'
 import CustomButton from '../../components/CustomButton'
 import { router } from 'expo-router'
 import { useGlobalContext } from '../../context/GlobalProvider'
 import { StatusBar } from 'expo-status-bar'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const Profile = () => {
 

@@ -1,23 +1,21 @@
 import {
 	View,
 	Text,
-	TouchableHighlight,
 	TouchableOpacity,
 	ScrollView,
-	SafeAreaView,
 } from "react-native";
 import React from "react";
 import { FontAwesome } from "@expo/vector-icons";
-import { Touchable } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import ActivityCard from "../components/ActivityCard";
 import EyeDetector from "../components/detector/EyeDetector";
 import Graph from "../components/Graph";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Activity = () => {
 	const { time } = useLocalSearchParams();
 	return (
-		<SafeAreaView className="h-full w-full pt-10 bg-olive-BLACK">
+		<SafeAreaView className="h-full w-full bg-olive-BLACK">
 			<ScrollView>
 				<View className="flex-row justify-center items-center px-8 py-4">
 					<Text className="text-3xl text-center text-white">Activity</Text>
@@ -39,6 +37,7 @@ const Activity = () => {
 							</Text>
 						</View>
 						{/* next */}
+
 						<TouchableOpacity className="bg-orange-peel-200 py-6 px-4 rounded-full">
 							<FontAwesome name="angle-right" size={35} />
 						</TouchableOpacity>

@@ -5,219 +5,244 @@ import { NativeModules, Linking, Alert, Platform } from "react-native";
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundFetch from "expo-background-fetch";
 
+// Remove this line
+// import { DevicePolicyManager, ComponentName } from 'react-native-device-admin';
+
 const GlobalContext = createContext();
 export const useGlobalContext = () => useContext(GlobalContext);
 
 export default GlobalProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isToddlerModeActive, setIsToddlerModeActive] = useState(false);
+	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const [user, setUser] = useState(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isToddlerModeActive, setIsToddlerModeActive] = useState(false);
 
-  // Function for enabling admin previledge
-  const enableDeviceAdmin = () => {
-    try {
-      const intent = {
-        action: "android.app.action.ADD_DEVICE_ADMIN",
-        data: {
-          "android.app.extra.DEVICE_ADMIN": new ComponentName(
-            "com.bismay.drowse",
-            "com.bismay.drowse.DeviceAdminReceiver"
-          ),
-          "android.app.extra.EXPLANATION":
-            "This app needs device admin to lock the screen.",
-        },
-      };
-      Linking.sendIntent(intent.action, intent.data);
-      // return true
-    } catch (e) {
-      Alert.alert(
-        "Error",
-        "Please enable device admin manually in Settings > Security > Device Administrators"
-      );
-    }
-  };
+	// Function for enabling admin previledge
+	const enableDeviceAdmin = () => {
+		try {
+			const intent = {
+				action: "android.app.action.ADD_DEVICE_ADMIN",
+				data: {
+					"android.app.extra.DEVICE_ADMIN": new ComponentName(
+						"com.bismay.drowse",
+						"com.bismay.drowse.DeviceAdminReceiver"
+					),
+					"android.app.extra.EXPLANATION":
+						"This app needs device admin to lock the screen.",
+				},
+			};
 
-  // Defining Background task
+			Linking.sendIntent(intent.action, intent.data);
+			// return true
+		} catch (e) {
+			Alert.alert(
+				"Error",
+				"Please enable device admin manually in Settings > Security > Device Administrators"
+			);
+		}
+	};
 
-  const TODDLER_MODE_TASK = "toddler-mode-lock-screen";
+	const isDeviceAdminEnabled = async () => {
+		try {
+		  const result = await NativeModules.ScreenLock.isAdminActive();
+		  return result;
+		} catch (e) {
+		  console.error("Error checking admin status:", e);
+		  return false;
+		}
+	  };
 
-  TaskManager.defineTask(TODDLER_MODE_TASK, async () => {
-    try {
-      if(isToddlerModeActive && NativeModules.ScreenLock){
-        await NativeModules.ScreenLock.lockScreen();
-        return BackgroundFetch.BackgroundFetchResult.NewData;
-      }
-      return BackgroundFetch.BackgroundFetchResult.NoData;
-    } catch (error) {
-      console.error("Toddle mode task error: ", error);
-      return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-  });
+	// Defining Background task
 
-  const startToddlerMode = async () => {
-    try {
-      setIsToddlerModeActive(true);
-      await BackgroundFetch.registerTaskAsync(TODDLER_MODE_TASK, {
-        minimumInterval: 3,
-        stopOnTerminate: false,
-        startOnBoot: true
-        // exactAndAllowWhileIdle: true
-      });
-      enableDeviceAdmin()
-    } catch (error) {
-      console.error("Error starting toddler mode: ", error);
-      Alert.alert("Error", "Failed to activate Toddler Mode");
-    }
-  }
+	const TODDLER_MODE_TASK = "toddler-mode-lock-screen";
 
-  const stopToddlerMode = async () => {
-    try {
-      setIsToddlerModeActive(false);
-      await BackgroundFetch.unregisterTaskAsync(TODDLER_MODE_TASK);
-      Alert.alert("Toddler Mode", "Toddler Mode has been stopped");
-    } catch (error) {
-      console.error("Error stopping toddler mode: ", error);
-    }
-  }
-  // const BACKGROUND_LOCK_TASK = "background-lock-screen";
+	TaskManager.defineTask(TODDLER_MODE_TASK, async () => {
+		try {
+			if (isToddlerModeActive && NativeModules.ScreenLock) {
+				await NativeModules.ScreenLock.lockScreen();
+				console.log(
+					"Running screen lock task: ",
+					BackgroundFetch.BackgroundFetchResult.NewData
+				);
+				return BackgroundFetch.BackgroundFetchResult.NewData;
+			}
+			return BackgroundFetch.BackgroundFetchResult.NoData;
+		} catch (error) {
+			console.error("Toddle mode task error: ", error);
+			return BackgroundFetch.BackgroundFetchResult.Failed;
+		}
+	});
 
-  // TaskManager.defineTask(BACKGROUND_LOCK_TASK, async () => {
-  //   try {
-  //     console.log("Running screen lock task");
-  //     if (NativeModules.ScreenLock) {
-  //       await NativeModules.ScreenLock.lockScreen();
+	const startToddlerMode = async () => {
+		try {
+			setIsToddlerModeActive(true);
+			await BackgroundFetch.registerTaskAsync(TODDLER_MODE_TASK, {
+				minimumInterval: 1,
+				stopOnTerminate: false,
+				startOnBoot: true,
+				exactAndAllowWhileIdle: true,
+			});
+			const adminEnabled = await NativeModules.ScreenLock.isAdminActive();
+      console.log(adminEnabled);
+			if (!adminEnabled) {
+				enableDeviceAdmin();
+			}
+		} catch (error) {
+			console.error("Error starting toddler mode: ", error);
+			Alert.alert("Error", "Failed to activate Toddler Mode");
+		}
+	};
 
-  //       const usageStats = await new Promise((resolve, reject) => {
-  //         NativeModules.ScreenLock.getAppUsageStats(
-  //           (result) => resolve(result),
-  //           (error) => reject(error)
-  //         );
-  //       });
-  //       console.log("App Usage Stats : ", usageStats);
+	const stopToddlerMode = async () => {
+		try {
+			setIsToddlerModeActive(false);
+			await BackgroundFetch.unregisterTaskAsync(TODDLER_MODE_TASK);
+			Alert.alert("Toddler Mode", "Toddler Mode has been stopped");
+		} catch (error) {
+			console.error("Error stopping toddler mode: ", error);
+		}
+	};
+	// const BACKGROUND_LOCK_TASK = "background-lock-screen";
 
-  //       return BackgroundFetch.BackgroundFetchResult.NewData;
-  //     }
-  //   } catch (error) {
-  //     console.error("Background task error:", error);
-  //     return BackgroundFetch.BackgroundFetchResult.Failed;
-  //   }
-  // });
+	// TaskManager.defineTask(BACKGROUND_LOCK_TASK, async () => {
+	//   try {
+	//     console.log("Running screen lock task");
+	//     if (NativeModules.ScreenLock) {
+	//       await NativeModules.ScreenLock.lockScreen();
 
-  const getUsageStats = async () => {
-    console.log("clicking");
-    // const usageStats = await new Promise((resolve, reject) => {
-    //   NativeModules.ScreenLock.getAppUsageStats(
-    //     (result) => {
-    //       console.log("Raw usage stats:", result);
+	//       const usageStats = await new Promise((resolve, reject) => {
+	//         NativeModules.ScreenLock.getAppUsageStats(
+	//           (result) => resolve(result),
+	//           (error) => reject(error)
+	//         );
+	//       });
+	//       console.log("App Usage Stats : ", usageStats);
 
-    //       resolve(result);
-    //     },
-    //     (error) => {
-    //       console.log("ERROR : ", error);
+	//       return BackgroundFetch.BackgroundFetchResult.NewData;
+	//     }
+	//   } catch (error) {
+	//     console.error("Background task error:", error);
+	//     return BackgroundFetch.BackgroundFetchResult.Failed;
+	//   }
+	// });
 
-    //       reject(error);
-    //     }
-    //   );
-    // });
-    requestUsageStatsPermission();
+	const getUsageStats = async () => {
+		console.log("clicking");
+		// const usageStats = await new Promise((resolve, reject) => {
+		//   NativeModules.ScreenLock.getAppUsageStats(
+		//     (result) => {
+		//       console.log("Raw usage stats:", result);
 
-    const stats = await new Promise((resolve, reject) => {
-      NativeModules.ScreenLock.getAppUsageStats(resolve, reject); 
-    });
+		//       resolve(result);
+		//     },
+		//     (error) => {
+		//       console.log("ERROR : ", error);
 
-    console.log("Stats : ", stats);
+		//       reject(error);
+		//     }
+		//   );
+		// });
+		requestUsageStatsPermission();
 
-    // console.log("App Usage Stats : ", usageStats);
-  };
+		const stats = await new Promise((resolve, reject) => {
+			NativeModules.ScreenLock.getAppUsageStats(resolve, reject);
+		});
 
-  // const lockSystem = async () => {
-  //   try {
-  //     // TaskManager.startTask(BACKGROUND_LOCK_TASK);
-  //     if (NativeModules.ScreenLock) {
-  //       const res = NativeModules.ScreenLock.lockScreen();
-  //       if (res.status !== 200) {
-  //         Alert.alert("Error", "Failed to lock screen");
-  //       }
-  //     }
-  //     // enableDeviceAdmin();
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // };
+		console.log("Stats : ", stats);
 
-  const requestUsageStatsPermission = () => {
-    if (Platform.OS === "android") {
-      try {
-        Linking.openSettings();
-        Alert.alert(
-          "Permission Required",
-          'Please enable "Apps with usage access" for this app in Settings > Security.'
-        );
-      } catch (error) {
-        Alert.alert("Error", "Unable to open settings: " + error.message);
-      }
-    }
-  };
+		// console.log("App Usage Stats : ", usageStats);
+	};
 
-  // Registering the background task
-  const registerBackgroundTask = async () => {
-    const status = BackgroundFetch.getStatusAsync();
-    const isRegistered =
-      TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCK_TASK);
-    console.log(isRegistered);
+	// const lockSystem = async () => {
+	//   try {
+	//     // TaskManager.startTask(BACKGROUND_LOCK_TASK);
+	//     if (NativeModules.ScreenLock) {
+	//       const res = NativeModules.ScreenLock.lockScreen();
+	//       if (res.status !== 200) {
+	//         Alert.alert("Error", "Failed to lock screen");
+	//       }
+	//     }
+	//     // enableDeviceAdmin();
+	//   } catch (e) {
+	//     console.log(e);
+	//   }
+	// };
 
-    if (status === BackgroundFetch.BackgroundFetchStatus.Restricted) {
-      console.log("Background execution is restricted");
-      return;
-    }
-    await BackgroundFetch.registerTaskAsync(BACKGROUND_LOCK_TASK, {
-      minimumInterval: 10 * 60,
-      stopOnTerminate: false,
-      startOnBoot: true,
-    });
-  };
+	const requestUsageStatsPermission = () => {
+		if (Platform.OS === "android") {
+			try {
+				Linking.openSettings();
+				Alert.alert(
+					"Permission Required",
+					'Please enable "Apps with usage access" for this app in Settings > Security.'
+				);
+			} catch (error) {
+				Alert.alert("Error", "Unable to open settings: " + error.message);
+			}
+		}
+	};
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        if (currentUser) {
-          setIsLoggedIn(true);
-          setUser(currentUser);
-        } else {
-          setIsLoggedIn(false);
-          setUser(null);
-        }
-      } catch (error) {
-        console.log("Global Provider: ", error);
-        setIsLoggedIn(false);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkUser();
-  }, []);
+	// Registering the background task
+	const registerBackgroundTask = async () => {
+		const status = BackgroundFetch.getStatusAsync();
+		const isRegistered =
+			TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCK_TASK);
+		console.log(isRegistered);
 
-  return (
-    <GlobalContext.Provider
-      value={{
-        isLoading,
-        isToddlerModeActive,
-        isLoggedIn,
-        user,
-        startToddlerMode,
-        stopToddlerMode,
-        setIsLoggedIn,
-        setUser,
-        enableDeviceAdmin,
-        registerBackgroundTask,
-        getUsageStats,
-        requestUsageStatsPermission,
-      }}
-    >
-      {children}
-    </GlobalContext.Provider>
-  );
+		if (status === BackgroundFetch.BackgroundFetchStatus.Restricted) {
+			console.log("Background execution is restricted");
+			return;
+		}
+		await BackgroundFetch.registerTaskAsync(BACKGROUND_LOCK_TASK, {
+			minimumInterval: 10 * 60,
+			stopOnTerminate: false,
+			startOnBoot: true,
+		});
+	};
+
+	useEffect(() => {
+		const checkUser = async () => {
+			try {
+				const currentUser = await authService.getCurrentUser();
+				if (currentUser) {
+					setIsLoggedIn(true);
+					setUser(currentUser);
+				} else {
+					setIsLoggedIn(false);
+					setUser(null);
+				}
+			} catch (error) {
+				console.log("Global Provider: ", error);
+				setIsLoggedIn(false);
+				setUser(null);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		checkUser();
+	}, []);
+
+	return (
+		<GlobalContext.Provider
+			value={{
+				isLoading,
+				isToddlerModeActive,
+				isLoggedIn,
+				user,
+				isDeviceAdminEnabled,
+				startToddlerMode,
+				stopToddlerMode,
+				setIsLoggedIn,
+				setUser,
+				enableDeviceAdmin,
+				registerBackgroundTask,
+				getUsageStats,
+				requestUsageStatsPermission,
+			}}
+		>
+			{children}
+		</GlobalContext.Provider>
+	);
 };
+
+

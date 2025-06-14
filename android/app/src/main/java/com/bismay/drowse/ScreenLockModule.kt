@@ -1,16 +1,5 @@
 package com.bismay.drowse
 
-
-//import android.app.admin.DevicePolicyManager
-//import android.content.ComponentName
-//import android.content.Context
-//import com.facebook.react.bridge.ReactApplicationContext
-//import com.facebook.react.bridge.ReactContextBaseJavaModule
-//import com.facebook.react.bridge.ReactMethod
-//import com.facebook.react.bridge.WritableArray
-//import com.facebook.react.bridge.WritableMap
-//import com.facebook.react.bridge.Arguments
-
 import android.app.admin.DevicePolicyManager
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
@@ -52,6 +41,17 @@ class ScreenLockModule(reactContext: ReactApplicationContext) : ReactContextBase
         }catch (e: Exception) {
             println("Error locking screen: ${e.message}")
         }
+    }
+
+    @ReactMethod
+    fun isAdminActive(): Boolean{
+            val devicePolicyManager = reactApplicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(reactApplicationContext, DeviceAdminReceiver::class.java)
+
+            if (devicePolicyManager.isAdminActive(adminComponent)){
+                return true
+            }
+            return false
     }
 
     @ReactMethod

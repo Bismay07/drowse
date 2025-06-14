@@ -315,32 +315,6 @@ export default function EyeDetector() {
       <Text style={styles.brightnessText}>
         Brightness: {currentBrightness.value.toFixed(2)}
       </Text>
-      {/* <Button
-        onPress={async () => {
-          const success = await setBrightnessOnJS(0.5);
-          if (success) {
-            console.log('[Button] Brightness set to 0.5');
-            currentBrightness.value = 0.5;
-            brightnessValue.value = 0.5;
-          } else {
-            Alert.alert('Error', 'Failed to reset brightness');
-          }
-        }}
-        title="Reset Brightness to 50%"
-      />
-      <Button
-        onPress={async () => {
-          const success = await setBrightnessOnJS(1.0);
-          if (success) {
-            console.log('[Button] Brightness set to 1.0');
-            currentBrightness.value = 1.0;
-            brightnessValue.value = 1.0;
-          } else {
-            Alert.alert('Error', 'Failed to set brightness to max');
-          }
-        }}
-        title="Set Brightness to 100%"
-      /> */}
     </View>
   );
 }

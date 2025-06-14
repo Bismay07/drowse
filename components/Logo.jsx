@@ -2,9 +2,9 @@ import * as React from "react";
 import { Text, View } from "react-native";
 import Svg, { Path, LinearGradient, Stop, Defs } from "react-native-svg";
 
-const Logo = ({ withName = false, size = 35, textClassName = "", className = "", props }) => {
+const Logo = ({ withName = false, size = 35, textClassName = "", classname = "", props }) => {
 	return (
-		<View className={`flex-row items-center gap-3 ${className}`}>
+		<View className={`flex-row items-center gap-3 ${classname}`}>
 			<Svg
 				xmlns="http://www.w3.org/2000/svg"
 				data-name="Layer 2"

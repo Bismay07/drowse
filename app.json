@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bismay.drowse"
+      "bundleIdentifier": "com.bismay.drowse",
+      "infoPlist": {
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your camera"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +21,12 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.bismay.drowse",
-      "permissions": ["android.permission.WRITE_SETTINGS", "DEVICE_ADMIN", "PACKAGE_USAGE_STATS", "android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.WRITE_SETTINGS",
+        "DEVICE_ADMIN",
+        "PACKAGE_USAGE_STATS",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -45,6 +53,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0751cbde-a892-4338-9d9f-13f750d2e4e9"
+      }
     }
   }
 }
