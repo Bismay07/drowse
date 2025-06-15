@@ -15,8 +15,11 @@ import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.Arguments
 import java.io.ByteArrayOutputStream
-import java.util.Base64
+import java.util.*
 import android.util.Log
+import android.util.Base64
+import com.facebook.react.modules.core.DeviceEventManagerModule
+
 
 class ScreenLockModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     override fun getName():String{
@@ -56,28 +59,32 @@ class ScreenLockModule(reactContext: ReactApplicationContext) : ReactContextBase
 
     @ReactMethod
     fun getAppUsageStats(promise: Promise) {
-        try{
+        try {
             val usageStatsManager = reactApplicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-            val calendar = java.util.Calendar.getInstance()
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-            calendar.set(java.util.Calendar.MINUTE, 0)
-            calendar.set(java.util.Calendar.SECOND, 0)
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
             val startTime = calendar.timeInMillis
             val endTime = System.currentTimeMillis()
 
             val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
             val result: WritableArray = Arguments.createArray()
 
-            stats?.forEach {usageStat ->
+            stats?.forEach { usageStat ->
                 val map: WritableMap = Arguments.createMap()
                 map.putString("packageName", usageStat.packageName)
-                map.putDouble("totalTimeInForeground", usageStat.totalTimeInForeground/1000.0)
+                map.putDouble("totalTimeInForeground", usageStat.totalTimeInForeground / 1000.0)
                 map.putString("appName", getAppName(usageStat.packageName))
+                map.putString("appIcon", getAppIconBase64(usageStat.packageName))
+                result.pushMap(map)
             }
-            Log.d("UsageStats : ", "Returning ${result.toArrayList().size} apps with usage data");
+
+            Log.d("AppUsageModule", "Returning ${result.toArrayList().size} apps with usage data")
             promise.resolve(result)
-        }catch (e: Exception){
-            promise.reject("USAGE_STATS_ERROR", "Error fetching usage stats: ${e.message}")
+        } catch (e: Exception) {
+            Log.e("AppUsageModule", "Error fetching usage stats", e)
+            promise.reject("USAGE_STATS_ERROR", e.message)
         }
     }
 
@@ -86,7 +93,7 @@ class ScreenLockModule(reactContext: ReactApplicationContext) : ReactContextBase
             val packageManager = reactApplicationContext.packageManager
             val appInfo = packageManager.getApplicationInfo(packageName, 0)
             packageManager.getApplicationLabel(appInfo).toString()
-        }catch (e: Exception){
+        } catch (e: Exception) {
             packageName
         }
     }
@@ -99,9 +106,21 @@ class ScreenLockModule(reactContext: ReactApplicationContext) : ReactContextBase
             val stream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
             val byteArray = stream.toByteArray()
-            android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+            Base64.encodeToString(byteArray, Base64.DEFAULT)
         } catch (e: Exception) {
             null
         }
+    }
+
+    @ReactMethod
+    fun checkUsagePermission(promise: Promise) {
+        val usageStatsManager = reactApplicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+        promise.resolve(stats != null && stats.isNotEmpty())
     }
 }

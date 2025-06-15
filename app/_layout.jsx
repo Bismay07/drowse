@@ -38,6 +38,7 @@ export default function RootLayout() {
 				<Stack.Screen name={"index"} />
 				<Stack.Screen name={"(auth)"} />
 				<Stack.Screen name={"activity"} />
+				<Stack.Screen name={"timelimit"} />
 			</Stack>
 		</GlobalProvider>
 	);

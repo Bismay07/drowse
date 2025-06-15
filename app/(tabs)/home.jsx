@@ -99,9 +99,24 @@ const Home = () => {
 						</TouchableOpacity>
 					</View>
 				</TouchableOpacity>
+				{/* Stats */}
+
+
+				<TouchableOpacity
+					onPress={() => {
+						getUsageStats();
+					}}
+				>
+					<View className="bg-[#ffffff] gap-3 rounded-3xl mb-1 mx-4 px-8 py-10 mt-8 flex-row items-center">
+						<Text>Stats</Text>
+					</View>
+				</TouchableOpacity>
 				{/* Time limits */}
 
-				<TouchableOpacity>
+
+				<TouchableOpacity onPress={()=>{
+					router.push({pathname: "timelimit"})
+				}}>
 					<View className="bg-olive-50 gap-3 rounded-t-3xl mb-1 mx-4 px-5 py-5 mt-8 flex-row items-center">
 						<View>
 							<FontAwesome name="hourglass-half" size={25} color="#e27700" />

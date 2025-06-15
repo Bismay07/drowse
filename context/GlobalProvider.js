@@ -73,25 +73,24 @@ export default GlobalProvider = ({ children }) => {
 		}
 	});
 
-	const startToddlerMode = async () => {
-		try {
-			setIsToddlerModeActive(true);
-			await BackgroundFetch.registerTaskAsync(TODDLER_MODE_TASK, {
-				minimumInterval: 1,
-				stopOnTerminate: false,
-				startOnBoot: true,
-				exactAndAllowWhileIdle: true,
-			});
-			const adminEnabled = await NativeModules.ScreenLock.isAdminActive();
-      console.log(adminEnabled);
-			if (!adminEnabled) {
-				enableDeviceAdmin();
-			}
-		} catch (error) {
-			console.error("Error starting toddler mode: ", error);
-			Alert.alert("Error", "Failed to activate Toddler Mode");
-		}
-	};
+  const startToddlerMode = async () => {
+    try {
+      setIsToddlerModeActive(true);
+      BackgroundFetch.registerTaskAsync(TODDLER_MODE_TASK, {
+        minimumInterval: 3,
+        stopOnTerminate: false,
+        startOnBoot: true,
+        // exactAndAllowWhileIdle: true
+      }).then(data=>{
+        console.log("Activated", isToddlerModeActive);
+        
+      });
+      enableDeviceAdmin()
+    } catch (error) {
+      console.error("Error starting toddler mode: ", error);
+      Alert.alert("Error", "Failed to activate Toddler Mode");
+    }
+  }
 
 	const stopToddlerMode = async () => {
 		try {
@@ -138,15 +137,16 @@ export default GlobalProvider = ({ children }) => {
 		//     (error) => {
 		//       console.log("ERROR : ", error);
 
-		//       reject(error);
-		//     }
-		//   );
-		// });
-		requestUsageStatsPermission();
+    //       reject(error);
+    //     }
+    //   );
+    // });
+    // requestUsageStatsPermission();
+    const granted = await NativeModules.ScreenLock.checkUsagePermission()
+    console.log(granted);
+    
 
-		const stats = await new Promise((resolve, reject) => {
-			NativeModules.ScreenLock.getAppUsageStats(resolve, reject);
-		});
+    const stats = await NativeModules.ScreenLock.getAppUsageStats();
 
 		console.log("Stats : ", stats);
 
